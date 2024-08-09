@@ -7,6 +7,8 @@ import pandas as pd
 import time
 
 FREQ_LIMIT = 20 #每秒报单限制
+TRADING_LEVEL = 267000 # 交易级别，单位为元, 实际总目标仓位
+DEFAULT_CASH = 250000 # 目标仓位文件中的默认现金
 
 SKIP_STOCKS = ["SHSE.511620",
                "SHSE.511880",
@@ -133,7 +135,8 @@ def algo(context):
             else:
                 lot_size = 100
             
-            vol = round(alpha[stock] / yesterday_close / lot_size ) * lot_size
+            leverage_ratio = TRADING_LEVEL / DEFAULT_CASH
+            vol = round(alpha[stock] * leverage_ratio / yesterday_close / lot_size ) * lot_size
         else:
             vol = 0
 
@@ -149,7 +152,7 @@ def algo(context):
             holding = holdings[stock]
         else:
             holding = 0
-        
+
         diff = vol - holding
 
         if abs(diff) < 100:
