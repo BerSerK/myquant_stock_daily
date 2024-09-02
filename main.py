@@ -7,13 +7,13 @@ import pandas as pd
 import time
 
 FREQ_LIMIT = 20 #每秒报单限制
-TRADING_LEVEL = 267000 # 交易级别，单位为元, 实际总目标仓位
+TRADING_LEVEL = 260000 # 交易级别，单位为元, 实际总目标仓位
 DEFAULT_CASH = 250000 # 目标仓位文件中的默认现金
 
-SKIP_STOCKS = ["SHSE.511620",
-               "SHSE.511880",
-               "SHSE.511990",
-               "SHSE.600900"]
+SKIP_STOCKS = ["SHSE.511620", # 货币基金ETF
+               "SHSE.511880", # 银华日利ETF
+               "SHSE.511990", # 华宝添益
+               "SHSE.600900"] # 长江电力
 
 EMPTY_STOCKS = ["SHSE.600321"]
 
@@ -48,7 +48,7 @@ def init(context):
         padding = " " * (30 - len(k_str))
         log("[AccountInfo] %s %s: %s" % (padding, k_str, v))
         
-data_dir = "Z:\\alpha\\"
+data_dir = r"\\192.168.31.236\\stock_prod\\alpha\\"
 
 def std_ticker(raw_ticker):
     ex = raw_ticker[:2]
@@ -136,7 +136,7 @@ def algo(context):
                 lot_size = 100
             
             leverage_ratio = TRADING_LEVEL / DEFAULT_CASH
-            vol = round(alpha[stock] * leverage_ratio / yesterday_close / lot_size ) * lot_size
+            vol = round(alpha[stock] * leverage_ratio / new_price / lot_size ) * lot_size
         else:
             vol = 0
 
@@ -181,47 +181,50 @@ def algo(context):
     # sort order_list by side, Sell first
     order_list.sort(key=lambda x: x['side'], reverse=True)
 
-    tag = 'sell'
-    for order in order_list:
-        stock = order['symbol']
-        symbol = stock
-        holding = order['from']
-        vol = order['to']
-        diff = order['diff']
-        abs_diff = order['volume']
-        yesterday_close = order['yesterday_close']
-        new_price = order['new_price']
+    def exec_order(order_list, side):
+        for order in order_list:
+            stock = order['symbol']
+            symbol = stock
+            holding = order['from']
+            vol = order['to']
+            diff = order['diff']
+            abs_diff = order['volume']
+            yesterday_close = order['yesterday_close']
+            new_price = order['new_price']
+            
+            if order['side'] != side:
+                continue
 
-        if tag == 'sell' and diff > 0:
-            wait_time = 3
-            log("刚执行完卖单, 等待{}秒".format(wait_time))
-            time.sleep(wait_time)
-            tag = 'buy'
+            MARKET_ORDER_SAFE = 0.05
+            if diff > 0: # buy
+                order_price = min(max(yesterday_close, new_price) * (1.0 + MARKET_ORDER_SAFE), yesterday_close * 1.1)
+                # round to 2 decimal.
+                order_price = round(100 * order_price) / 100
 
-        MARKET_ORDER_SAFE = 0.05
-        if diff > 0: # buy
-            order_price = min(max(yesterday_close, new_price) * (1.0 + MARKET_ORDER_SAFE), yesterday_close * 1.1)
-            # round to 2 decimal.
-            order_price = round(100 * order_price) / 100
+                order = order_volume(symbol=symbol, volume=abs_diff, side=OrderSide_Buy,
+                    order_type=OrderType_Market, position_effect=PositionEffect_Open, price=order_price)
+            else: # sell
+                order_price = max(min(yesterday_close, new_price) * (1.0 - MARKET_ORDER_SAFE), yesterday_close * 0.9)
+                # round to 2 decimal.
+                order_price = round(100 * order_price) / 100
 
-            order = order_volume(symbol=symbol, volume=abs_diff, side=OrderSide_Buy,
-                order_type=OrderType_Market, position_effect=PositionEffect_Open, price=order_price)
-        else: # sell
-            order_price = max(min(yesterday_close, new_price) * (1.0 - MARKET_ORDER_SAFE), yesterday_close * 0.9)
-            # round to 2 decimal.
-            order_price = round(100 * order_price) / 100
+                order = order_volume(symbol=symbol, volume=abs_diff, side=OrderSide_Sell,
+                    order_type=OrderType_Market, position_effect=PositionEffect_Close, price=order_price)
 
-            order = order_volume(symbol=symbol, volume=abs_diff, side=OrderSide_Sell,
-                order_type=OrderType_Market, position_effect=PositionEffect_Close, price=order_price)
+            log("交易:", stock, "from", holding, "to", vol, 'diff:', diff, 'volume', abs_diff, 'yesterday close price:', yesterday_close, 'new price:', new_price, "order price:", order_price)
+            
+            if hasattr(context, 'order_id'): 
+                context.order_id.append(order[0]['cl_ord_id'])
+            else:
+                context.order_id = [order[0]['cl_ord_id']]
+            
+            time.sleep(1.0/FREQ_LIMIT)
 
-        log("交易:", stock, "from", holding, "to", vol, 'diff:', diff, 'volume', abs_diff, 'yesterday close price:', yesterday_close, 'new price:', new_price, "order price:", order_price)
-        
-        if hasattr(context, 'order_id'): 
-            context.order_id.append(order[0]['cl_ord_id'])
-        else:
-            context.order_id = [order[0]['cl_ord_id']]
-        
-        time.sleep(1.0/FREQ_LIMIT)
+    exec_order(order_list, OrderSide_Sell)
+    # sleep 3 seconds
+    time.sleep(3)
+    
+    exec_order(order_list, OrderSide_Buy)
         
 def on_order_status(context, order):
     if order['status'] == 3:
