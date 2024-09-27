@@ -5,9 +5,8 @@ import datetime as dt
 import os
 import pandas as pd
 import time
-
+from config import *
 FREQ_LIMIT = 20 #每秒报单限制
-TRADING_LEVEL = 260000 # 交易级别，单位为元, 实际总目标仓位
 DEFAULT_CASH = 250000 # 目标仓位文件中的默认现金
 
 SKIP_STOCKS = ["SHSE.511620", # 货币基金ETF
@@ -200,6 +199,16 @@ def algo(context):
                 order_price = min(max(yesterday_close, new_price) * (1.0 + MARKET_ORDER_SAFE), yesterday_close * 1.1)
                 # round to 2 decimal.
                 order_price = round(100 * order_price) / 100
+
+                stock_code = symbol.split(".")[-1]
+                if stock_code.startswith('688'):
+                    lot_size = 200
+                else:
+                    lot_size = 100
+                # 检查 abs_diff 是否是lot_size的整数倍, 如果不是按整数倍取整一下.
+                lots = abs_diff / lot_size
+                lots = round(lots)
+                abs_diff = lots * lot_size
 
                 order = order_volume(symbol=symbol, volume=abs_diff, side=OrderSide_Buy,
                     order_type=OrderType_Market, position_effect=PositionEffect_Open, price=order_price)
