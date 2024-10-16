@@ -12,7 +12,9 @@ DEFAULT_CASH = 250000 # 目标仓位文件中的默认现金
 SKIP_STOCKS = ["SHSE.511620", # 货币基金ETF
                "SHSE.511880", # 银华日利ETF
                "SHSE.511990", # 华宝添益
-               "SHSE.600900"] # 长江电力
+               "SHSE.600900", # 长江电力
+               "SHSE.560510", # 泰康中证A500ETF
+               ]
 
 EMPTY_STOCKS = ["SHSE.600321"]
 
