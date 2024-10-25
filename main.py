@@ -22,7 +22,7 @@ SKIP_STOCKS = ["SHSE.511620", # 货币基金ETF
                 "SZSE.159351",
                 "SHSE.560530",
                 "SHSE.560610",
-                "SZSE.159338",
+                "SZSE.159338"
 ]
 
 EMPTY_STOCKS = ["SHSE.600321"]
