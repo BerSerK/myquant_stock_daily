@@ -10,11 +10,20 @@ FREQ_LIMIT = 20 #每秒报单限制
 DEFAULT_CASH = 250000 # 目标仓位文件中的默认现金
 
 SKIP_STOCKS = ["SHSE.511620", # 货币基金ETF
-               "SHSE.511880", # 银华日利ETF
-               "SHSE.511990", # 华宝添益
-               "SHSE.600900", # 长江电力
-               "SHSE.560510", # 泰康中证A500ETF
-               ]
+                "SHSE.511880", # 银华日利ETF
+                "SHSE.511990", # 华宝添益
+                "SHSE.600900", # 长江电力
+                "SHSE.560510", # 泰康中证A500ETF
+                "SHSE.159353", # 景顺A500ETF
+                "SHSE.563220",
+                "SHSE.563360",
+                "SZSE.159339",
+                "SZSE.159352",
+                "SZSE.159351",
+                "SHSE.560530",
+                "SHSE.560610",
+                "SZSE.159338",
+]
 
 EMPTY_STOCKS = ["SHSE.600321"]
 
@@ -239,9 +248,19 @@ def algo(context):
         
 def on_order_status(context, order):
     if order['status'] == 3:
-        log("Order completed:", order)
+        log("Order completed:")
+        # beauify print dict "order"
+        for k, v in order.items():
+            k_str = str(k)
+            padding = " " * (30 - len(k_str))
+            log("[OrderInfo] %s %s: %s" % (padding, k_str, v))
     else:
-        log("Order status updated:", order)
+        log("Order status updated:")
+        # beauify print dict "order"
+        for k, v in order.items():
+            k_str = str(k)
+            padding = " " * (30 - len(k_str))
+            log("[OrderInfo] %s %s: %s" % (padding, k_str, v))
 
 # 查看最终的回测结果
 def on_backtest_finished(context, indicator):
