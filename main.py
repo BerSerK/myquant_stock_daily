@@ -22,7 +22,16 @@ SKIP_STOCKS = ["SHSE.511620", # 货币基金ETF
                 "SZSE.159351",
                 "SHSE.560530",
                 "SHSE.560610",
-                "SZSE.159338"
+                "SZSE.159338",
+                "SZSE.159390", # 国联中证A50ETF
+                # 20250125 退市风险
+                "SHSE.600193",
+                "SHSE.603813",
+                "SZSE.000595",
+                "SZSE.000668",
+                "SHSE.600696",
+                "SHSE.605081",
+                "SZSE.002305"
 ]
 
 EMPTY_STOCKS = ["SHSE.600321"]
@@ -116,6 +125,7 @@ def algo(context):
     # 获取停牌股和ST股列表
     date2 = context.now.strftime("%Y-%m-%d %H:%M:%S")
     df_code = get_history_instruments(symbols=stock_list, start_date=date2, end_date=date2, df=True)
+    print(df_code)
     df_stop = df_code[(df_code['is_suspended'] == 1)]
     df_st = df_code[df_code['sec_level'] != 1]
     stop_list = df_stop['symbol'].tolist()
@@ -156,7 +166,26 @@ def algo(context):
 
         if symbol in st_list:
             log("ST股，不持仓:", symbol, "holding:", holdings.get(symbol, 0), 'yesterday close price:', yesterday_close, 'new price:', new_price)
-            vol = 0
+            if symbol in holdings:
+                # 如果持有ST股，卖出
+                price = new_price
+                holding = holdings[symbol]
+                vol = 0
+                diff = vol - holding
+                abs_diff = abs(diff)
+                order_info = {"symbol": symbol,
+                            "from": holding,
+                            "to": 0,
+                            "diff": diff,
+                            "volume": abs_diff,
+                            "yesterday_close": yesterday_close,
+                            "new_price": new_price,
+                            "price": 0,
+                            "side": OrderSide_Buy if diff > 0 else OrderSide_Sell,
+                            "position_effect": PositionEffect_Open if diff > 0 else PositionEffect_Close,
+                            "order_type": OrderType_Market}
+                order_list.append(order_info)
+                vol = 0
 
         if stock in holdings:
             holding = holdings[stock]
@@ -248,14 +277,14 @@ def algo(context):
         
 def on_order_status(context, order):
     if order['status'] == 3:
-        log("Order completed:")
+        log("=" * 10, "Order completed", "=" * 10)
         # beauify print dict "order"
         for k, v in order.items():
             k_str = str(k)
             padding = " " * (30 - len(k_str))
             log("[OrderInfo] %s %s: %s" % (padding, k_str, v))
     else:
-        log("Order status updated:")
+        log("=" * 10, "Order status updated", "=" * 10)
         # beauify print dict "order"
         for k, v in order.items():
             k_str = str(k)
@@ -281,11 +310,11 @@ if __name__ == '__main__':
         backtest_slippage_ratio回测滑点比例
         backtest_match_mode市价撮合模式，以下一tick/bar开盘价撮合:0，以当前tick/bar收盘价撮合：1
     '''
-    run(strategy_id='57166f01-0741-11ef-9f26-a4bb6dd1a9cc',
+    run(strategy_id='375b1883-3e1b-11f0-9c2e-a4bb6dd1a9cc',
         filename='main.py',
         # mode=MODE_BACKTEST,
         mode=MODE_LIVE,
-        token='03fefdbeb25d9507525802de467f18e1058d364b',
+        token='c0fba12a684d0886ce3917bc9309ef9e9c394d85',
         backtest_start_time='2020-11-01 08:00:00',
         backtest_end_time='2020-11-10 16:00:00',
         backtest_adjust=ADJUST_PREV,
